@@ -17,6 +17,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
 )
 
 var log = logf.Log.WithName("controller_encryptedsecret")
@@ -101,19 +106,20 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 	}
 
 	// Define a new Pod object
-	pod := newPodForCR(instance)
+	// pod := newPodForCR(instance)
+	secret := newSecretForCR(instance)
 
 	// Set EncryptedSecret instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, secret, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	found := &corev1.Secret{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		reqLogger.Info("Creating a new Secret", "Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
+		err = r.client.Create(context.TODO(), secret)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -125,8 +131,39 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 	}
 
 	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	reqLogger.Info("Skip reconcile: Secret already exists", "Secret.Namespace", found.Namespace, "Secret.Name", found.Name)
 	return reconcile.Result{}, nil
+}
+
+// newPodForCR returns a busybox pod with the same name/namespace as the cr
+func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
+
+	var client kmsiface.KMSAPI
+	sess := session.Must(session.NewSession())
+	client = kms.New(sess, &aws.Config{
+		Region: aws.String("eu-central-1"),
+	})
+
+	out, err := client.Decrypt(&kms.DecryptInput{
+		CiphertextBlob: cr.Spec.Ciphertext,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	labels := map[string]string{
+		"app": cr.Name,
+	}
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name + "-secret",
+			Namespace: cr.Namespace,
+			Labels:    labels,
+		},
+		Data: map[string][]byte{
+			"content": out.Plaintext,
+		},
+	}
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
