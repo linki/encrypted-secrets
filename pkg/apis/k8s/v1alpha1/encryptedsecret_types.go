@@ -15,6 +15,8 @@ type EncryptedSecretSpec struct {
 
 	// +kubebuilder:validation:Enum=AWS;GCP
 	Provider string `json:"provider"`
+	// +kubebuilder:validation:Optional
+	KeyID string `json:"keyID"`
 	// +kubebuilder:validation:Required
 	Ciphertext []byte `json:"ciphertext"`
 }

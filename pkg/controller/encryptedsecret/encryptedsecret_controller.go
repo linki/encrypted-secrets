@@ -22,6 +22,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
+
+	googlekms "cloud.google.com/go/kms/apiv1"
+	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
 )
 
 var log = logf.Log.WithName("controller_encryptedsecret")
@@ -137,18 +140,48 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
 func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
+	var (
+		result []byte
+	)
 
-	var client kmsiface.KMSAPI
-	sess := session.Must(session.NewSession())
-	client = kms.New(sess, &aws.Config{
-		Region: aws.String("eu-central-1"),
-	})
+	switch cr.Spec.Provider {
+	case "AWS":
+		var client kmsiface.KMSAPI
+		sess := session.Must(session.NewSession())
+		client = kms.New(sess, &aws.Config{
+			Region: aws.String("eu-central-1"),
+		})
 
-	out, err := client.Decrypt(&kms.DecryptInput{
-		CiphertextBlob: cr.Spec.Ciphertext,
-	})
-	if err != nil {
-		panic(err)
+		out, err := client.Decrypt(&kms.DecryptInput{
+			CiphertextBlob: cr.Spec.Ciphertext,
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		result = out.Plaintext
+	case "GCP":
+		ctx := context.Background()
+		c, err := googlekms.NewKeyManagementClient(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		req := &kmspb.DecryptRequest{
+			Name:       cr.Spec.KeyID,
+			Ciphertext: cr.Spec.Ciphertext,
+		}
+		resp, err := c.Decrypt(ctx, req)
+		if err != nil {
+			panic(err)
+		}
+		// TODO: Use resp.
+		result = resp.GetPlaintext()
+
+		// defer client.Close()
+
+	default:
+		panic("no provider")
 	}
 
 	labels := map[string]string{
@@ -161,7 +194,7 @@ func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
 			Labels:    labels,
 		},
 		Data: map[string][]byte{
-			"content": out.Plaintext,
+			"content": result,
 		},
 	}
 }
