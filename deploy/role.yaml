@@ -70,6 +70,7 @@ rules:
   - k8s.linki.space
   resources:
   - '*'
+  - managedsecrets
   verbs:
   - create
   - delete
