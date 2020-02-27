@@ -13,6 +13,11 @@ type EncryptedSecretSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
+	// +kubebuilder:validation:Enum=AWS;GCP
+	Provider string `json:"provider"`
+	// +kubebuilder:validation:Optional
+	KeyID string `json:"keyID"`
+	// +kubebuilder:validation:Required
 	Ciphertext []byte `json:"ciphertext"`
 }
 

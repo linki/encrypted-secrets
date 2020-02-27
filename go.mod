@@ -3,9 +3,13 @@ module github.com/linki/encrypted-secrets
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.17.7
+	cloud.google.com/go v0.38.0
+	github.com/Azure/go-autorest/autorest/adal v0.8.0 // indirect
+	github.com/aws/aws-sdk-go v1.25.48
+	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/spf13/pflag v1.0.5
+	google.golang.org/genproto v0.0.0-20200225123651-fc8f55426688
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v12.0.0+incompatible
