@@ -18,6 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go/service/secretsmanager/secretsmanageriface"
+
 	secretmanager "cloud.google.com/go/secretmanager/apiv1beta1"
 	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1beta1"
 )
@@ -140,7 +145,20 @@ func newSecretForCR(cr *k8sv1alpha1.ManagedSecret) *corev1.Secret {
 
 	switch cr.Spec.Provider {
 	case "AWS":
-		panic("not implemented")
+		var client secretsmanageriface.SecretsManagerAPI
+		sess := session.Must(session.NewSession())
+		client = secretsmanager.New(sess, &aws.Config{
+			Region: aws.String("eu-central-1"),
+		})
+
+		out, err := client.GetSecretValue(&secretsmanager.GetSecretValueInput{
+			SecretId: &cr.Spec.SecretName,
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		result = []byte(aws.StringValue(out.SecretString))
 	case "GCP":
 		ctx := context.Background()
 		c, err := secretmanager.NewClient(ctx)
