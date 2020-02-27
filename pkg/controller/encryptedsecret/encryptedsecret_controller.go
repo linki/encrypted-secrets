@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,13 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
-
-	googlekms "cloud.google.com/go/kms/apiv1"
-	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
+	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
+	"github.com/linki/encrypted-secrets/pkg/provider"
 )
 
 var log = logf.Log.WithName("controller_encryptedsecret")
@@ -151,42 +145,22 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 
 // newSecretForCR returns a plain old secret with the same name/namespace as the cr containing the decrypted secret value
 func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
-	var result []byte
+	var (
+		result []byte
+		err    error
+	)
 
 	switch cr.Spec.Provider {
-	case "AWS":
-		var client kmsiface.KMSAPI
-		sess := session.Must(session.NewSession())
-		client = kms.New(sess, &aws.Config{
-			Region: aws.String("eu-central-1"),
-		})
-
-		out, err := client.Decrypt(&kms.DecryptInput{
-			CiphertextBlob: cr.Spec.Ciphertext,
-		})
+	case provider.ProviderAWS:
+		result, err = provider.HandleEncryptedSecret_AWS(cr)
 		if err != nil {
 			panic(err)
 		}
-
-		result = out.Plaintext
-	case "GCP":
-		ctx := context.Background()
-		c, err := googlekms.NewKeyManagementClient(ctx)
+	case provider.ProviderGCP:
+		result, err = provider.HandleEncryptedSecret_GCP(cr)
 		if err != nil {
 			panic(err)
 		}
-		defer c.Close()
-
-		req := &kmspb.DecryptRequest{
-			Name:       cr.Spec.KeyID,
-			Ciphertext: cr.Spec.Ciphertext,
-		}
-		resp, err := c.Decrypt(ctx, req)
-		if err != nil {
-			panic(err)
-		}
-
-		result = resp.GetPlaintext()
 	default:
 		panic("provider doesn't exist")
 	}

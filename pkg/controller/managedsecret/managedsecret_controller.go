@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,13 +18,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
-	"github.com/aws/aws-sdk-go/service/secretsmanager/secretsmanageriface"
-
-	secretmanager "cloud.google.com/go/secretmanager/apiv1beta1"
-	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1beta1"
+	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
+	"github.com/linki/encrypted-secrets/pkg/provider"
 )
 
 var log = logf.Log.WithName("controller_managedsecret")
@@ -151,41 +145,22 @@ func (r *ReconcileManagedSecret) Reconcile(request reconcile.Request) (reconcile
 
 // newSecretForCR returns a plain old secret with the same name/namespace as the cr containing the decrypted secret value
 func newSecretForCR(cr *k8sv1alpha1.ManagedSecret) *corev1.Secret {
-	var result []byte
+	var (
+		result []byte
+		err    error
+	)
 
 	switch cr.Spec.Provider {
-	case "AWS":
-		var client secretsmanageriface.SecretsManagerAPI
-		sess := session.Must(session.NewSession())
-		client = secretsmanager.New(sess, &aws.Config{
-			Region: aws.String("eu-central-1"),
-		})
-
-		out, err := client.GetSecretValue(&secretsmanager.GetSecretValueInput{
-			SecretId: &cr.Spec.SecretName,
-		})
+	case provider.ProviderAWS:
+		result, err = provider.HandleManagedSecret_AWS(cr)
 		if err != nil {
 			panic(err)
 		}
-
-		result = []byte(aws.StringValue(out.SecretString))
-	case "GCP":
-		ctx := context.Background()
-		c, err := secretmanager.NewClient(ctx)
+	case provider.ProviderGCP:
+		result, err = provider.HandleManagedSecret_GCP(cr)
 		if err != nil {
 			panic(err)
 		}
-		defer c.Close()
-
-		req := &secretmanagerpb.AccessSecretVersionRequest{
-			Name: cr.Spec.SecretName,
-		}
-		resp, err := c.AccessSecretVersion(ctx, req)
-		if err != nil {
-			panic(err)
-		}
-
-		result = resp.GetPayload().GetData()
 	default:
 		panic("provider doesn't exist")
 	}
