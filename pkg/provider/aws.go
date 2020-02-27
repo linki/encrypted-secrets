@@ -1,6 +1,8 @@
 package provider
 
 import (
+	"github.com/spf13/pflag"
+
 	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,11 +19,26 @@ const (
 	ProviderAWS = "AWS"
 )
 
+var (
+	AWSFlagSet *pflag.FlagSet
+)
+
+func init() {
+	AWSFlagSet = pflag.NewFlagSet("aws", pflag.ExitOnError)
+
+	AWSFlagSet.String("aws-region", "eu-central-1", "The AWS region to use")
+}
+
 func HandleEncryptedSecret_AWS(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) {
+	region, err := AWSFlagSet.GetString("aws-region")
+	if err != nil {
+		panic(err)
+	}
+
 	var client kmsiface.KMSAPI
 	sess := session.Must(session.NewSession())
 	client = kms.New(sess, &aws.Config{
-		Region: aws.String("eu-central-1"),
+		Region: aws.String(region),
 	})
 
 	out, err := client.Decrypt(&kms.DecryptInput{
