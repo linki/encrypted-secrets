@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 
+	"github.com/spf13/pflag"
+
 	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
 
 	kms "cloud.google.com/go/kms/apiv1"
@@ -15,6 +17,14 @@ import (
 const (
 	ProviderGCP = "GCP"
 )
+
+var (
+	GCPFlagSet *pflag.FlagSet
+)
+
+func init() {
+	GCPFlagSet = pflag.NewFlagSet("gcp", pflag.ExitOnError)
+}
 
 func HandleEncryptedSecret_GCP(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) {
 	ctx := context.Background()

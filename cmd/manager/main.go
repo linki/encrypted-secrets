@@ -14,6 +14,7 @@ import (
 
 	"github.com/linki/encrypted-secrets/pkg/apis"
 	"github.com/linki/encrypted-secrets/pkg/controller"
+	"github.com/linki/encrypted-secrets/pkg/provider"
 	"github.com/linki/encrypted-secrets/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -54,6 +55,10 @@ func main() {
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
+	// Add flags registered by secret providers
+	pflag.CommandLine.AddFlagSet(provider.AWSFlagSet)
+	pflag.CommandLine.AddFlagSet(provider.GCPFlagSet)
 
 	pflag.Parse()
 
