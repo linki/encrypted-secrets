@@ -1,6 +1,7 @@
 package encryptedsecret
 
 import (
+	"bytes"
 	"context"
 
 	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
@@ -60,8 +61,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner EncryptedSecret
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	// Watch for changes to secondary resource Secrets and requeue the owner EncryptedSecret
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &k8sv1alpha1.EncryptedSecret{},
 	})
@@ -86,7 +87,7 @@ type ReconcileEncryptedSecret struct {
 // Reconcile reads that state of the cluster for a EncryptedSecret object and makes changes based on the state read
 // and what is in the EncryptedSecret.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
+// a Secret as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -108,8 +109,7 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	// pod := newPodForCR(instance)
+	// Define a new Secret object
 	secret := newSecretForCR(instance)
 
 	// Set EncryptedSecret instance as the owner and controller
@@ -117,7 +117,7 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	// Check if this Pod already exists
+	// Check if this Secret already exists
 	found := &corev1.Secret{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
@@ -127,22 +127,31 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 			return reconcile.Result{}, err
 		}
 
-		// Pod created successfully - don't requeue
+		// Secret created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Secret already exists", "Secret.Namespace", found.Namespace, "Secret.Name", found.Name)
+	if bytes.Compare(found.Data["content"], secret.Data["content"]) != 0 {
+		reqLogger.Info("Updating existing Secret", "Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
+		err = r.client.Update(context.TODO(), secret)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Secret updated successfully - don't requeue
+		return reconcile.Result{}, nil
+	}
+
+	// Secret already exists and is unchanged - don't requeue
+	reqLogger.Info("Skip reconcile: Secret already exists and is unchanged", "Secret.Namespace", found.Namespace, "Secret.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
+// newSecretForCR returns a plain old secret with the same name/namespace as the cr containing the decrypted secret value
 func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
-	var (
-		result []byte
-	)
+	var result []byte
 
 	switch cr.Spec.Provider {
 	case "AWS":
@@ -166,6 +175,7 @@ func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
 		if err != nil {
 			panic(err)
 		}
+		defer c.Close()
 
 		req := &kmspb.DecryptRequest{
 			Name:       cr.Spec.KeyID,
@@ -175,49 +185,19 @@ func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
 		if err != nil {
 			panic(err)
 		}
-		// TODO: Use resp.
+
 		result = resp.GetPlaintext()
-
-		// defer client.Close()
-
 	default:
-		panic("no provider")
+		panic("provider doesn't exist")
 	}
 
-	labels := map[string]string{
-		"app": cr.Name,
-	}
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-secret",
+			Name:      cr.Name,
 			Namespace: cr.Namespace,
-			Labels:    labels,
 		},
 		Data: map[string][]byte{
 			"content": result,
-		},
-	}
-}
-
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
 		},
 	}
 }
