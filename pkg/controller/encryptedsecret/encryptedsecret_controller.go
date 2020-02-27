@@ -3,6 +3,7 @@ package encryptedsecret
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -104,7 +105,10 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 	}
 
 	// Define a new Secret object
-	secret := newSecretForCR(instance)
+	secret, err := newSecretForCR(instance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 
 	// Set EncryptedSecret instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, secret, r.scheme); err != nil {
@@ -144,7 +148,7 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 }
 
 // newSecretForCR returns a plain old secret with the same name/namespace as the cr containing the decrypted secret value
-func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
+func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) (*corev1.Secret, error) {
 	var (
 		result []byte
 		err    error
@@ -154,15 +158,15 @@ func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
 	case provider.ProviderAWS:
 		result, err = provider.HandleEncryptedSecret_AWS(cr)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	case provider.ProviderGCP:
 		result, err = provider.HandleEncryptedSecret_GCP(cr)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	default:
-		panic("provider doesn't exist")
+		return nil, fmt.Errorf("provider doesn't exist: %v", cr.Spec.Provider)
 	}
 
 	return &corev1.Secret{
@@ -173,5 +177,5 @@ func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) *corev1.Secret {
 		Data: map[string][]byte{
 			"content": result,
 		},
-	}
+	}, nil
 }

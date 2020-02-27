@@ -30,7 +30,7 @@ func HandleEncryptedSecret_GCP(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) 
 	ctx := context.Background()
 	c, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer c.Close()
 
@@ -40,7 +40,7 @@ func HandleEncryptedSecret_GCP(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) 
 	}
 	resp, err := c.Decrypt(ctx, req)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return resp.GetPlaintext(), nil
@@ -50,7 +50,7 @@ func HandleManagedSecret_GCP(cr *k8sv1alpha1.ManagedSecret) ([]byte, error) {
 	ctx := context.Background()
 	c, err := secretmanager.NewClient(ctx)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	defer c.Close()
 
@@ -59,7 +59,7 @@ func HandleManagedSecret_GCP(cr *k8sv1alpha1.ManagedSecret) ([]byte, error) {
 	}
 	resp, err := c.AccessSecretVersion(ctx, req)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return resp.GetPayload().GetData(), nil

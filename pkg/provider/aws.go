@@ -32,7 +32,7 @@ func init() {
 func HandleEncryptedSecret_AWS(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) {
 	region, err := AWSFlagSet.GetString("aws-region")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	var client kmsiface.KMSAPI
@@ -45,7 +45,7 @@ func HandleEncryptedSecret_AWS(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) 
 		CiphertextBlob: cr.Spec.Ciphertext,
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return out.Plaintext, nil
@@ -62,7 +62,7 @@ func HandleManagedSecret_AWS(cr *k8sv1alpha1.ManagedSecret) ([]byte, error) {
 		SecretId: &cr.Spec.SecretName,
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return []byte(aws.StringValue(out.SecretString)), nil
