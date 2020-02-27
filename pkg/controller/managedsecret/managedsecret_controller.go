@@ -17,6 +17,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	secretmanager "cloud.google.com/go/secretmanager/apiv1beta1"
+	secretmanagerpb "google.golang.org/genproto/googleapis/cloud/secretmanager/v1beta1"
 )
 
 var log = logf.Log.WithName("controller_managedsecret")
@@ -100,20 +103,20 @@ func (r *ReconcileManagedSecret) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
+	// Define a new Secret object
+	secret := newSecretForCR(instance)
 
 	// Set ManagedSecret instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, secret, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	found := &corev1.Secret{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		reqLogger.Info("Creating a new Secret", "Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
+		err = r.client.Create(context.TODO(), secret)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -125,29 +128,53 @@ func (r *ReconcileManagedSecret) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	reqLogger.Info("Skip reconcile: Secret already exists", "Secret.Namespace", found.Namespace, "Secret.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *k8sv1alpha1.ManagedSecret) *corev1.Pod {
+func newSecretForCR(cr *k8sv1alpha1.ManagedSecret) *corev1.Secret {
+	var (
+		result []byte
+	)
+
+	switch cr.Spec.Provider {
+	case "AWS":
+		panic("not implemented")
+	case "GCP":
+		ctx := context.Background()
+		c, err := secretmanager.NewClient(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		req := &secretmanagerpb.AccessSecretVersionRequest{
+			Name: cr.Spec.SecretName,
+		}
+		resp, err := c.AccessSecretVersion(ctx, req)
+		if err != nil {
+			panic(err)
+		}
+		// TODO: Use resp.
+		result = resp.GetPayload().GetData()
+
+		// defer client.Close()
+
+	default:
+		panic("no provider")
+	}
+
 	labels := map[string]string{
 		"app": cr.Name,
 	}
-	return &corev1.Pod{
+	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
+			Name:      cr.Name + "-secret",
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
+		Data: map[string][]byte{
+			"content": result,
 		},
 	}
 }
