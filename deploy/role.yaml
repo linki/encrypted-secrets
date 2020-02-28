@@ -1,7 +1,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  creationTimestamp: null
   name: encrypted-secrets
 rules:
 - apiGroups:
@@ -69,7 +68,7 @@ rules:
 - apiGroups:
   - k8s.linki.space
   resources:
-  - '*'
+  - encryptedsecrets
   - managedsecrets
   verbs:
   - create
