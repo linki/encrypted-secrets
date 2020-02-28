@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -21,6 +23,11 @@ import (
 
 	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
 	"github.com/linki/encrypted-secrets/pkg/provider"
+)
+
+const (
+	apiVersion = "k8s.linki.space/v1alpha1"
+	kind       = "ManagedSecret"
 )
 
 var log = logf.Log.WithName("controller_managedsecret")
@@ -43,6 +50,17 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
+	// Check if primary resource ManagedSecret exists
+	dc := discovery.NewDiscoveryClientForConfigOrDie(mgr.GetConfig())
+	exists, err := k8sutil.ResourceExists(dc, apiVersion, kind)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		log.WithValues("APIVersion", apiVersion, "Kind", kind).Info("CustomResourceDefinition not found")
+		return nil
+	}
+
 	// Create a new controller
 	c, err := controller.New("managedsecret-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
