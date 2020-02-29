@@ -3,7 +3,9 @@ FROM golang:1.13-alpine3.11 as builder
 
 WORKDIR /encrypted-secrets
 COPY . /encrypted-secrets
-RUN go build -o /bin/encrypted-secrets ./cmd/manager/main.go
+RUN go build -o /bin/encrypted-secrets \
+  -ldflags "-X github.com/linki/encrypted-secrets/version.Version=$(git describe --tags --always --dirty)" \
+  ./cmd/manager/main.go
 
 # final image
 FROM alpine:3.11
