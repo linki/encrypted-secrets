@@ -1,6 +1,7 @@
 # builder image
 FROM golang:1.13-alpine3.11 as builder
 
+RUN apk --no-cache add git
 WORKDIR /encrypted-secrets
 COPY . /encrypted-secrets
 RUN go build -o /bin/encrypted-secrets \
