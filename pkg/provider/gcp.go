@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"log"
 
 	"github.com/spf13/pflag"
 
@@ -22,23 +23,50 @@ var (
 	GCPFlagSet *pflag.FlagSet
 )
 
-func init() {
-	GCPFlagSet = pflag.NewFlagSet("gcp", pflag.ExitOnError)
+var _ Provider = &GCPProvider{}
+
+type GCPProvider struct {
+	kmsClient     *kms.KeyManagementClient
+	secretsClient *secretmanager.Client
 }
 
-func HandleEncryptedSecret_GCP(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) {
+func init() {
+	GCPFlagSet = pflag.NewFlagSet("gcp", pflag.ExitOnError)
+
+	provider, err := NewGCPProvider()
+	if err != nil {
+		log.Fatal(err)
+	}
+	providers[ProviderGCP] = provider
+}
+
+func NewGCPProvider() (*GCPProvider, error) {
 	ctx := context.Background()
-	c, err := kms.NewKeyManagementClient(ctx)
+
+	kmsClient, err := kms.NewKeyManagementClient(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
 
+	secretsClient, err := secretmanager.NewClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	provider := &GCPProvider{
+		kmsClient:     kmsClient,
+		secretsClient: secretsClient,
+	}
+
+	return provider, nil
+}
+
+func (p *GCPProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) {
 	req := &kmspb.DecryptRequest{
 		Name:       cr.Spec.KeyID,
 		Ciphertext: cr.Spec.Ciphertext,
 	}
-	resp, err := c.Decrypt(ctx, req)
+	resp, err := p.kmsClient.Decrypt(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -46,18 +74,11 @@ func HandleEncryptedSecret_GCP(cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) 
 	return resp.GetPlaintext(), nil
 }
 
-func HandleManagedSecret_GCP(cr *k8sv1alpha1.ManagedSecret) ([]byte, error) {
-	ctx := context.Background()
-	c, err := secretmanager.NewClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer c.Close()
-
+func (p *GCPProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) ([]byte, error) {
 	req := &secretmanagerpb.AccessSecretVersionRequest{
 		Name: cr.Spec.SecretName,
 	}
-	resp, err := c.AccessSecretVersion(ctx, req)
+	resp, err := p.secretsClient.AccessSecretVersion(ctx, req)
 	if err != nil {
 		return nil, err
 	}

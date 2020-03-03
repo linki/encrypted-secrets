@@ -3,7 +3,6 @@ package managedsecret
 import (
 	"bytes"
 	"context"
-	"fmt"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
@@ -167,24 +166,14 @@ func (r *ReconcileManagedSecret) Reconcile(request reconcile.Request) (reconcile
 
 // newSecretForCR returns a plain old secret with the same name/namespace as the cr containing the decrypted secret value
 func newSecretForCR(cr *k8sv1alpha1.ManagedSecret) (*corev1.Secret, error) {
-	var (
-		result []byte
-		err    error
-	)
+	provider, err := provider.ProviderFor(cr.Spec.Provider)
+	if err != nil {
+		return nil, err
+	}
 
-	switch cr.Spec.Provider {
-	case provider.ProviderAWS:
-		result, err = provider.HandleManagedSecret_AWS(cr)
-		if err != nil {
-			return nil, err
-		}
-	case provider.ProviderGCP:
-		result, err = provider.HandleManagedSecret_GCP(cr)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("provider doesn't exist: %v", cr.Spec.Provider)
+	result, err := provider.HandleManagedSecret(context.TODO(), cr)
+	if err != nil {
+		return nil, err
 	}
 
 	return &corev1.Secret{
