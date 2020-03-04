@@ -1,8 +1,8 @@
 package encryptedsecret
 
 import (
-	"bytes"
 	"context"
+	"reflect"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
@@ -148,7 +148,7 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 		return reconcile.Result{}, err
 	}
 
-	if bytes.Compare(found.Data["content"], secret.Data["content"]) != 0 {
+	if !reflect.DeepEqual(found.Data, secret.Data) {
 		reqLogger.Info("Updating existing Secret", "Secret.Namespace", secret.Namespace, "Secret.Name", secret.Name)
 		err = r.client.Update(context.TODO(), secret)
 		if err != nil {
@@ -171,7 +171,7 @@ func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) (*corev1.Secret, error) {
 		return nil, err
 	}
 
-	result, err := provider.HandleEncryptedSecret(context.TODO(), cr)
+	data, err := provider.HandleEncryptedSecret(context.TODO(), cr)
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +181,6 @@ func newSecretForCR(cr *k8sv1alpha1.EncryptedSecret) (*corev1.Secret, error) {
 			Name:      cr.Name,
 			Namespace: cr.Namespace,
 		},
-		Data: map[string][]byte{
-			"content": result,
-		},
+		Data: data,
 	}, nil
 }

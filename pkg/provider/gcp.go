@@ -61,27 +61,39 @@ func NewGCPProvider() (*GCPProvider, error) {
 	return provider, nil
 }
 
-func (p *GCPProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) {
-	req := &kmspb.DecryptRequest{
-		Name:       cr.Spec.KeyID,
-		Ciphertext: cr.Spec.Ciphertext,
-	}
-	resp, err := p.kmsClient.Decrypt(ctx, req)
-	if err != nil {
-		return nil, err
+func (p *GCPProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) (map[string][]byte, error) {
+	data := map[string][]byte{}
+
+	for key, ciphertext := range cr.Spec.Data {
+		req := &kmspb.DecryptRequest{
+			Name:       cr.Spec.KeyID,
+			Ciphertext: ciphertext,
+		}
+		resp, err := p.kmsClient.Decrypt(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		data[key] = resp.GetPlaintext()
 	}
 
-	return resp.GetPlaintext(), nil
+	return data, nil
 }
 
-func (p *GCPProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) ([]byte, error) {
-	req := &secretmanagerpb.AccessSecretVersionRequest{
-		Name: cr.Spec.SecretName,
-	}
-	resp, err := p.secretsClient.AccessSecretVersion(ctx, req)
-	if err != nil {
-		return nil, err
+func (p *GCPProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) (map[string][]byte, error) {
+	data := map[string][]byte{}
+
+	for key, secretName := range cr.Spec.Data {
+		req := &secretmanagerpb.AccessSecretVersionRequest{
+			Name: secretName,
+		}
+		resp, err := p.secretsClient.AccessSecretVersion(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		data[key] = resp.GetPayload().GetData()
 	}
 
-	return resp.GetPayload().GetData(), nil
+	return data, nil
 }

@@ -16,7 +16,7 @@ type ManagedSecretSpec struct {
 	// +kubebuilder:validation:Enum=AWS;GCP
 	Provider string `json:"provider"`
 	// +kubebuilder:validation:Required
-	SecretName string `json:"secretName"`
+	Data map[string]string `json:"data"`
 }
 
 // ManagedSecretStatus defines the observed state of ManagedSecret

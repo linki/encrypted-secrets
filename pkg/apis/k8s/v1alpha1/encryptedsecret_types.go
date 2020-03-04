@@ -18,7 +18,7 @@ type EncryptedSecretSpec struct {
 	// +kubebuilder:validation:Optional
 	KeyID string `json:"keyID"`
 	// +kubebuilder:validation:Required
-	Ciphertext []byte `json:"ciphertext"`
+	Data map[string][]byte `json:"data"`
 }
 
 // EncryptedSecretStatus defines the observed state of EncryptedSecret
