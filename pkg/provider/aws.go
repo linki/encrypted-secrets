@@ -68,26 +68,38 @@ func NewAWSProvider(region string) (*AWSProvider, error) {
 	return provider, nil
 }
 
-func (p *AWSProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) ([]byte, error) {
-	req := &kms.DecryptInput{
-		CiphertextBlob: cr.Spec.Ciphertext,
-	}
-	resp, err := p.kmsClient.DecryptWithContext(ctx, req)
-	if err != nil {
-		return nil, err
+func (p *AWSProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) (map[string][]byte, error) {
+	data := map[string][]byte{}
+
+	for key, ciphertext := range cr.Spec.Data {
+		req := &kms.DecryptInput{
+			CiphertextBlob: ciphertext,
+		}
+		resp, err := p.kmsClient.DecryptWithContext(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		data[key] = resp.Plaintext
 	}
 
-	return resp.Plaintext, nil
+	return data, nil
 }
 
-func (p *AWSProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) ([]byte, error) {
-	req := &secretsmanager.GetSecretValueInput{
-		SecretId: &cr.Spec.SecretName,
-	}
-	resp, err := p.secretsClient.GetSecretValueWithContext(ctx, req)
-	if err != nil {
-		return nil, err
+func (p *AWSProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) (map[string][]byte, error) {
+	data := map[string][]byte{}
+
+	for key, secretName := range cr.Spec.Data {
+		req := &secretsmanager.GetSecretValueInput{
+			SecretId: aws.String(secretName),
+		}
+		resp, err := p.secretsClient.GetSecretValueWithContext(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		data[key] = []byte(aws.StringValue(resp.SecretString))
 	}
 
-	return []byte(aws.StringValue(resp.SecretString)), nil
+	return data, nil
 }
