@@ -1,0 +1,45 @@
+Metadata:
+  StackName: encrypted-secrets
+Resources:
+  EncryptedSecrets:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: encrypted-secrets
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSKeyManagementServicePowerUser
+      - arn:aws:iam::aws:policy/SecretsManagerReadWrite
+      # kube2iam
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Action: ["sts:AssumeRole"]
+          Effect: Allow
+          Principal:
+            Service: [ec2.amazonaws.com]
+        - Action: ["sts:AssumeRole"]
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::170858875137:role/kube-aws-test-linki81-worker
+  EncryptedSecretsKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Key used to store encrypted secrets
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+        - Sid: Enable IAM User Permissions
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::170858875137:root
+          Action: "*"
+          Resource: "*"
+        - Sid: Allow use of the key
+          Effect: Allow
+          Principal:
+            AWS: !GetAtt EncryptedSecrets.Arn
+          Action:
+          - 'kms:Decrypt'
+          - 'secretsmanager:GetSecretValue'
+          Resource: '*'
