@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/spf13/pflag"
 
@@ -38,19 +37,17 @@ func init() {
 
 	AWSFlagSet.String("aws-region", "eu-central-1", "The AWS region to use")
 
-	region, err := AWSFlagSet.GetString("aws-region")
-	if err != nil {
-		log.Fatal(err)
+	newProviderFuncs[ProviderAWS] = func() (Provider, error) {
+		return NewAWSProvider()
 	}
-
-	provider, err := NewAWSProvider(region)
-	if err != nil {
-		log.Fatal(err)
-	}
-	providers[ProviderAWS] = provider
 }
 
-func NewAWSProvider(region string) (*AWSProvider, error) {
+func NewAWSProvider() (*AWSProvider, error) {
+	region, err := AWSFlagSet.GetString("aws-region")
+	if err != nil {
+		return nil, err
+	}
+
 	sess, err := session.NewSession()
 	if err != nil {
 		return nil, err

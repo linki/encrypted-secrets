@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	providers = map[string]Provider{}
+	providers        = map[string]Provider{}
+	newProviderFuncs = map[string]func() (Provider, error){}
 )
 
 type Provider interface {
@@ -16,10 +17,21 @@ type Provider interface {
 	HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) (map[string][]byte, error)
 }
 
-func ProviderFor(provider string) (Provider, error) {
-	if provider, ok := providers[provider]; !ok {
-		return nil, fmt.Errorf("Provider not found: %s", provider)
+func ProviderFor(providerName string) (Provider, error) {
+	if provider, ok := providers[providerName]; ok {
+		return provider, nil
 	}
 
-	return providers[provider], nil
+	providerFunc, ok := newProviderFuncs[providerName]
+	if !ok {
+		return nil, fmt.Errorf("Provider not found: %s", providerName)
+	}
+
+	provider, err := providerFunc()
+	if err != nil {
+		return nil, err
+	}
+
+	providers[providerName] = provider
+	return provider, nil
 }

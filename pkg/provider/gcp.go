@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	"github.com/spf13/pflag"
 
@@ -33,11 +32,9 @@ type GCPProvider struct {
 func init() {
 	GCPFlagSet = pflag.NewFlagSet("gcp", pflag.ExitOnError)
 
-	provider, err := NewGCPProvider()
-	if err != nil {
-		log.Fatal(err)
+	newProviderFuncs[ProviderGCP] = func() (Provider, error) {
+		return NewGCPProvider()
 	}
-	providers[ProviderGCP] = provider
 }
 
 func NewGCPProvider() (*GCPProvider, error) {
