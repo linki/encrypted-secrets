@@ -9,6 +9,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.4.0
 	google.golang.org/genproto v0.0.0-20200225123651-fc8f55426688
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0

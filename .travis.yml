@@ -1,0 +1,16 @@
+dist: bionic
+
+os:
+- linux
+
+language: go
+
+go:
+- "1.14"
+- tip
+
+env:
+- GO111MODULE=on
+
+script:
+- go test ./...

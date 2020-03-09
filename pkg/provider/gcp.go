@@ -2,10 +2,15 @@ package provider
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/spf13/pflag"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
+
+	"cloud.google.com/go/compute/metadata"
 
 	kms "cloud.google.com/go/kms/apiv1"
 	kmspb "google.golang.org/genproto/googleapis/cloud/kms/v1"
@@ -18,6 +23,11 @@ const (
 	ProviderGCP = "GCP"
 )
 
+const (
+	defaultProject = "default-project"
+	defaultRegion  = "default-region"
+)
+
 var (
 	GCPFlagSet *pflag.FlagSet
 )
@@ -27,6 +37,8 @@ var _ Provider = &GCPProvider{}
 type GCPProvider struct {
 	kmsClient     *kms.KeyManagementClient
 	secretsClient *secretmanager.Client
+	projectID     string
+	region        string
 }
 
 func init() {
@@ -38,6 +50,21 @@ func init() {
 }
 
 func NewGCPProvider() (*GCPProvider, error) {
+	var log = logf.Log.WithName("gcp_provider")
+
+	projectID, err := metadata.ProjectID()
+	if err != nil {
+		log.Info("Failed to auto-detect GCP project")
+	}
+
+	region, err := metadata.Zone()
+	if err != nil {
+		log.Info("Failed to auto-detect GCP region")
+	}
+	if i := strings.LastIndex(region, "-"); i != -1 {
+		region = region[:i]
+	}
+
 	ctx := context.Background()
 
 	kmsClient, err := kms.NewKeyManagementClient(ctx)
@@ -53,6 +80,8 @@ func NewGCPProvider() (*GCPProvider, error) {
 	provider := &GCPProvider{
 		kmsClient:     kmsClient,
 		secretsClient: secretsClient,
+		projectID:     projectID,
+		region:        region,
 	}
 
 	return provider, nil
@@ -63,7 +92,7 @@ func (p *GCPProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1
 
 	for key, ciphertext := range cr.Spec.Data {
 		req := &kmspb.DecryptRequest{
-			Name:       cr.Spec.KeyID,
+			Name:       expandKeyID(cr.Spec.KeyID, p.projectID, p.region),
 			Ciphertext: ciphertext,
 		}
 		resp, err := p.kmsClient.Decrypt(ctx, req)
@@ -93,4 +122,21 @@ func (p *GCPProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.M
 	}
 
 	return data, nil
+}
+
+func expandKeyID(keyID, defaultProject, defaultRegion string) string {
+	keyInfo := map[string]string{
+		"projects":  defaultProject,
+		"locations": defaultRegion,
+	}
+
+	keyIDParts := strings.Split(keyID, "/")
+	for i := 0; i < len(keyIDParts)-1; i += 2 {
+		keyInfo[keyIDParts[i]] = keyIDParts[i+1]
+	}
+
+	expandedKeyID := fmt.Sprintf("projects/%s/locations/%s/keyRings/%s/cryptoKeys/%s",
+		keyInfo["projects"], keyInfo["locations"], keyInfo["keyRings"], keyInfo["cryptoKeys"])
+
+	return expandedKeyID
 }
