@@ -6,11 +6,13 @@ import (
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -44,7 +46,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileEncryptedSecret{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileEncryptedSecret{
+		client:        mgr.GetClient(),
+		scheme:        mgr.GetScheme(),
+		eventRecorder: mgr.GetEventRecorderFor("encryptedsecret-controller"),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -92,8 +98,9 @@ var _ reconcile.Reconciler = &ReconcileEncryptedSecret{}
 type ReconcileEncryptedSecret struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client        client.Client
+	scheme        *runtime.Scheme
+	eventRecorder record.EventRecorder
 }
 
 // Reconcile reads that state of the cluster for a EncryptedSecret object and makes changes based on the state read
@@ -142,6 +149,8 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 			return reconcile.Result{}, err
 		}
 
+		r.eventRecorder.Eventf(instance, v1.EventTypeNormal, "SuccessfulCreate", "Created secret: %s", secret.Name)
+
 		// Secret created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
@@ -154,6 +163,8 @@ func (r *ReconcileEncryptedSecret) Reconcile(request reconcile.Request) (reconci
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+
+		r.eventRecorder.Eventf(instance, v1.EventTypeNormal, "SuccessfulUpdate", "Updated secret: %s", secret.Name)
 
 		// Secret updated successfully - don't requeue
 		return reconcile.Result{}, nil
