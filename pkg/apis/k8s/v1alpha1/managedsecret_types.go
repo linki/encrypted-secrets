@@ -13,7 +13,7 @@ type ManagedSecretSpec struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
-	// +kubebuilder:validation:Enum=AWS;GCP
+	// +kubebuilder:validation:Enum=AWS;GCP;Identity
 	Provider string `json:"provider"`
 	// +kubebuilder:validation:Required
 	Data map[string]string `json:"data"`
