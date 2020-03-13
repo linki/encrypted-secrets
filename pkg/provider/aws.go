@@ -7,14 +7,14 @@ import (
 
 	k8sv1alpha1 "github.com/linki/encrypted-secrets/pkg/apis/k8s/v1alpha1"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/external"
 
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/service/kms/kmsiface"
+	"github.com/aws/aws-sdk-go-v2/service/kms"
+	"github.com/aws/aws-sdk-go-v2/service/kms/kmsiface"
 
-	"github.com/aws/aws-sdk-go/service/secretsmanager"
-	"github.com/aws/aws-sdk-go/service/secretsmanager/secretsmanageriface"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/secretsmanager/secretsmanageriface"
 )
 
 const (
@@ -28,8 +28,8 @@ var (
 var _ Provider = &AWSProvider{}
 
 type AWSProvider struct {
-	kmsClient     kmsiface.KMSAPI
-	secretsClient secretsmanageriface.SecretsManagerAPI
+	kmsClient     kmsiface.ClientAPI
+	secretsClient secretsmanageriface.ClientAPI
 }
 
 func init() {
@@ -43,23 +43,20 @@ func init() {
 }
 
 func NewAWSProvider() (*AWSProvider, error) {
+	cfg, err := external.LoadDefaultAWSConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	region, err := AWSFlagSet.GetString("aws-region")
 	if err != nil {
 		return nil, err
 	}
-
-	sess, err := session.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	config := &aws.Config{
-		Region: aws.String(region),
-	}
+	cfg.Region = region
 
 	provider := &AWSProvider{
-		kmsClient:     kms.New(sess, config),
-		secretsClient: secretsmanager.New(sess, config),
+		kmsClient:     kms.New(cfg),
+		secretsClient: secretsmanager.New(cfg),
 	}
 
 	return provider, nil
@@ -69,10 +66,11 @@ func (p *AWSProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1
 	data := map[string][]byte{}
 
 	for key, ciphertext := range cr.Spec.Data {
-		req := &kms.DecryptInput{
+		req := p.kmsClient.DecryptRequest(&kms.DecryptInput{
 			CiphertextBlob: ciphertext,
-		}
-		resp, err := p.kmsClient.DecryptWithContext(ctx, req)
+		})
+
+		resp, err := req.Send(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -87,10 +85,11 @@ func (p *AWSProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.M
 	data := map[string][]byte{}
 
 	for key, secretName := range cr.Spec.Data {
-		req := &secretsmanager.GetSecretValueInput{
+		req := p.secretsClient.GetSecretValueRequest(&secretsmanager.GetSecretValueInput{
 			SecretId: aws.String(secretName),
-		}
-		resp, err := p.secretsClient.GetSecretValueWithContext(ctx, req)
+		})
+
+		resp, err := req.Send(ctx)
 		if err != nil {
 			return nil, err
 		}

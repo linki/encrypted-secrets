@@ -5,7 +5,7 @@ go 1.13
 require (
 	cloud.google.com/go v0.53.0
 	github.com/Azure/go-autorest/autorest/adal v0.8.0 // indirect
-	github.com/aws/aws-sdk-go v1.25.48
+	github.com/aws/aws-sdk-go-v2 v0.19.0
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/spf13/pflag v1.0.5
