@@ -1,6 +1,8 @@
 # builder image
 FROM golang:1.13-alpine3.11 as builder
 
+LABEL org.opencontainers.image.source="https://github.com/linki/encrypted-secrets"
+
 RUN apk --no-cache add git
 WORKDIR /encrypted-secrets
 COPY . /encrypted-secrets
@@ -11,7 +13,7 @@ RUN go build -o /bin/encrypted-secrets \
 # final image
 FROM alpine:3.11
 
-LABEL org.opencontainers.image.source=https://github.com/linki/encrypted-secrets
+LABEL org.opencontainers.image.source="https://github.com/linki/encrypted-secrets"
 
 RUN apk --no-cache add ca-certificates dumb-init
 COPY --from=builder /bin/encrypted-secrets /bin/encrypted-secrets
