@@ -1,0 +1,13 @@
+domain: linki.space
+layout: go.kubebuilder.io/v3
+projectName: encrypted-secrets
+repo: github.com/linki/encrypted-secrets
+resources:
+- crdVersion: v1
+  group: k8s
+  kind: EncryptedSecret
+  version: v1alpha1
+version: 3-alpha
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
