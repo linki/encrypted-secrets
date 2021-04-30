@@ -8,4 +8,4 @@ webhook:
   port: 9443
 leaderElection:
   leaderElect: true
-  resourceName: 1bfe1aa6.linki.space
+  resourceName: 1bfe1aa6.linki.dev

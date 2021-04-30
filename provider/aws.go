@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 
-	k8sv1alpha1 "github.com/linki/encrypted-secrets/api/v1alpha1"
+	k8slinkidevv1beta1 "github.com/linki/encrypted-secrets/api/v1beta1"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -49,7 +49,7 @@ func NewAWSProvider(ctx context.Context) (*AWSProvider, error) {
 	return provider, nil
 }
 
-func (p *AWSProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) (map[string][]byte, error) {
+func (p *AWSProvider) HandleEncryptedSecret(ctx context.Context, cr *k8slinkidevv1beta1.EncryptedSecret) (map[string][]byte, error) {
 	data := map[string][]byte{}
 
 	for key, ciphertext := range cr.Spec.Data {
@@ -66,7 +66,7 @@ func (p *AWSProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1
 	return data, nil
 }
 
-func (p *AWSProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) (map[string][]byte, error) {
+func (p *AWSProvider) HandleManagedSecret(ctx context.Context, cr *k8slinkidevv1beta1.ManagedSecret) (map[string][]byte, error) {
 	data := map[string][]byte{}
 
 	for key, secretName := range cr.Spec.Data {

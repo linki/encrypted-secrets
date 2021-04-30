@@ -21,23 +21,19 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/linki/encrypted-secrets/provider"
-
+	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	k8sv1alpha1 "github.com/linki/encrypted-secrets/api/v1alpha1"
+	k8slinkidevv1beta1 "github.com/linki/encrypted-secrets/api/v1beta1"
+	"github.com/linki/encrypted-secrets/provider"
 )
 
 // EncryptedSecretReconciler reconciles a EncryptedSecret object
@@ -48,10 +44,9 @@ type EncryptedSecretReconciler struct {
 	Recorder record.EventRecorder
 }
 
-// +kubebuilder:rbac:groups=k8s.linki.space,resources=encryptedsecrets,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=k8s.linki.space,resources=encryptedsecrets/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=k8s.linki.space,resources=encryptedsecrets/finalizers,verbs=update
-// +kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups=k8s,resources=encryptedsecrets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=k8s,resources=encryptedsecrets/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=k8s,resources=encryptedsecrets/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -61,14 +56,14 @@ type EncryptedSecretReconciler struct {
 // the user.
 //
 // For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.0/pkg/reconcile
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.7.2/pkg/reconcile
 func (r *EncryptedSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("encryptedsecret", req.NamespacedName)
 
 	// your logic here
 
 	// Fetch the EncryptedSecret instance
-	instance := &k8sv1alpha1.EncryptedSecret{}
+	instance := &k8slinkidevv1beta1.EncryptedSecret{}
 	err := r.Client.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -127,19 +122,20 @@ func (r *EncryptedSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// Secret already exists and is unchanged - don't requeue
 	r.Log.Info("Skip reconcile: Secret already exists and is unchanged", "Secret.Namespace", found.Namespace, "Secret.Name", found.Name)
+
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *EncryptedSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&k8sv1alpha1.EncryptedSecret{}).
+		For(&k8slinkidevv1beta1.EncryptedSecret{}).
 		Owns(&v1.Secret{}).
 		Complete(r)
 }
 
 // newSecretForCR returns a plain old secret with the same name/namespace as the cr containing the decrypted secret value
-func newSecretForCR(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) (*v1.Secret, error) {
+func newSecretForCR(ctx context.Context, cr *k8slinkidevv1beta1.EncryptedSecret) (*v1.Secret, error) {
 	provider, err := provider.ProviderFor(ctx, cr.Spec.Provider)
 	if err != nil {
 		return nil, err

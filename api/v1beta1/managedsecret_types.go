@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,46 +23,44 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// EncryptedSecretSpec defines the desired state of EncryptedSecret
-type EncryptedSecretSpec struct {
+// ManagedSecretSpec defines the desired state of ManagedSecret
+type ManagedSecretSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// +kubebuilder:validation:Enum=AWS;GCP;Identity
 	Provider string `json:"provider"`
-	// +kubebuilder:validation:Optional
-	KeyID string `json:"keyID"`
 	// +kubebuilder:validation:Required
-	Data map[string][]byte `json:"data"`
+	Data map[string]string `json:"data"`
 }
 
-// EncryptedSecretStatus defines the observed state of EncryptedSecret
-type EncryptedSecretStatus struct {
+// ManagedSecretStatus defines the observed state of ManagedSecret
+type ManagedSecretStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
 
-// EncryptedSecret is the Schema for the encryptedsecrets API
-type EncryptedSecret struct {
+// ManagedSecret is the Schema for the managedsecrets API
+type ManagedSecret struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   EncryptedSecretSpec   `json:"spec,omitempty"`
-	Status EncryptedSecretStatus `json:"status,omitempty"`
+	Spec   ManagedSecretSpec   `json:"spec,omitempty"`
+	Status ManagedSecretStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
+//+kubebuilder:object:root=true
 
-// EncryptedSecretList contains a list of EncryptedSecret
-type EncryptedSecretList struct {
+// ManagedSecretList contains a list of ManagedSecret
+type ManagedSecretList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []EncryptedSecret `json:"items"`
+	Items           []ManagedSecret `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&EncryptedSecret{}, &EncryptedSecretList{})
+	SchemeBuilder.Register(&ManagedSecret{}, &ManagedSecretList{})
 }

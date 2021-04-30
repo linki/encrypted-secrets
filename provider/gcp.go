@@ -7,7 +7,7 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	k8sv1alpha1 "github.com/linki/encrypted-secrets/api/v1alpha1"
+	k8slinkidevv1beta1 "github.com/linki/encrypted-secrets/api/v1beta1"
 
 	"cloud.google.com/go/compute/metadata"
 
@@ -78,7 +78,7 @@ func NewGCPProvider(ctx context.Context) (*GCPProvider, error) {
 	return provider, nil
 }
 
-func (p *GCPProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1.EncryptedSecret) (map[string][]byte, error) {
+func (p *GCPProvider) HandleEncryptedSecret(ctx context.Context, cr *k8slinkidevv1beta1.EncryptedSecret) (map[string][]byte, error) {
 	data := map[string][]byte{}
 
 	for key, ciphertext := range cr.Spec.Data {
@@ -97,7 +97,7 @@ func (p *GCPProvider) HandleEncryptedSecret(ctx context.Context, cr *k8sv1alpha1
 	return data, nil
 }
 
-func (p *GCPProvider) HandleManagedSecret(ctx context.Context, cr *k8sv1alpha1.ManagedSecret) (map[string][]byte, error) {
+func (p *GCPProvider) HandleManagedSecret(ctx context.Context, cr *k8slinkidevv1beta1.ManagedSecret) (map[string][]byte, error) {
 	data := map[string][]byte{}
 
 	for key, secretName := range cr.Spec.Data {

@@ -1,5 +1,0 @@
-## Append samples you want in your CSV to this file as resources ##
-resources:
-- k8s_v1alpha1_encryptedsecret.yaml
-- k8s_v1alpha1_managedsecret.yaml
-# +kubebuilder:scaffold:manifestskustomizesamples

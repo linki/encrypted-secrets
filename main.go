@@ -31,9 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	k8sv1alpha1 "github.com/linki/encrypted-secrets/api/v1alpha1"
+	k8slinkidevv1beta1 "github.com/linki/encrypted-secrets/api/v1beta1"
 	"github.com/linki/encrypted-secrets/controllers"
-	// +kubebuilder:scaffold:imports
+	//+kubebuilder:scaffold:imports
 )
 
 var (
@@ -44,8 +44,8 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(k8sv1alpha1.AddToScheme(scheme))
-	// +kubebuilder:scaffold:scheme
+	utilruntime.Must(k8slinkidevv1beta1.AddToScheme(scheme))
+	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
@@ -71,7 +71,7 @@ func main() {
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "1bfe1aa6.linki.space",
+		LeaderElectionID:       "1bfe1aa6.linki.dev",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -96,13 +96,13 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ManagedSecret")
 		os.Exit(1)
 	}
-	// +kubebuilder:scaffold:builder
+	//+kubebuilder:scaffold:builder
 
-	if err := mgr.AddHealthzCheck("health", healthz.Ping); err != nil {
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
-	if err := mgr.AddReadyzCheck("check", healthz.Ping); err != nil {
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}

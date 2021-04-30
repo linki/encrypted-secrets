@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 
-	k8sv1alpha1 "github.com/linki/encrypted-secrets/api/v1alpha1"
+	k8slinkidevv1beta1 "github.com/linki/encrypted-secrets/api/v1beta1"
 )
 
 const (
@@ -24,7 +24,7 @@ func NewIdentityProvider(_ context.Context) (*IdentityProvider, error) {
 	return &IdentityProvider{}, nil
 }
 
-func (p *IdentityProvider) HandleEncryptedSecret(_ context.Context, cr *k8sv1alpha1.EncryptedSecret) (map[string][]byte, error) {
+func (p *IdentityProvider) HandleEncryptedSecret(_ context.Context, cr *k8slinkidevv1beta1.EncryptedSecret) (map[string][]byte, error) {
 	data := map[string][]byte{}
 
 	for key, secretValue := range cr.Spec.Data {
@@ -34,7 +34,7 @@ func (p *IdentityProvider) HandleEncryptedSecret(_ context.Context, cr *k8sv1alp
 	return data, nil
 }
 
-func (p *IdentityProvider) HandleManagedSecret(_ context.Context, cr *k8sv1alpha1.ManagedSecret) (map[string][]byte, error) {
+func (p *IdentityProvider) HandleManagedSecret(_ context.Context, cr *k8slinkidevv1beta1.ManagedSecret) (map[string][]byte, error) {
 	data := map[string][]byte{}
 
 	for key, secretName := range cr.Spec.Data {

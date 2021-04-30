@@ -7,14 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
-  - patch
-- apiGroups:
-  - k8s.linki.space
+  - k8s.linki.dev
   resources:
   - encryptedsecrets
   verbs:
@@ -26,13 +19,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - k8s.linki.space
+  - k8s.linki.dev
   resources:
   - encryptedsecrets/finalizers
   verbs:
   - update
 - apiGroups:
-  - k8s.linki.space
+  - k8s.linki.dev
   resources:
   - encryptedsecrets/status
   verbs:
@@ -40,7 +33,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - k8s.linki.space
+  - k8s.linki.dev
   resources:
   - managedsecrets
   verbs:
@@ -52,13 +45,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - k8s.linki.space
+  - k8s.linki.dev
   resources:
   - managedsecrets/finalizers
   verbs:
   - update
 - apiGroups:
-  - k8s.linki.space
+  - k8s.linki.dev
   resources:
   - managedsecrets/status
   verbs:
