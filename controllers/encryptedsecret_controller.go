@@ -134,6 +134,7 @@ func (r *EncryptedSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *EncryptedSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1alpha1.EncryptedSecret{}).
+		Owns(&v1.Secret{}).
 		Complete(r)
 }
 

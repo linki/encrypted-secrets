@@ -129,6 +129,7 @@ func (r *ManagedSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 func (r *ManagedSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&k8sv1alpha1.ManagedSecret{}).
+		Owns(&v1.Secret{}).
 		Complete(r)
 }
 
