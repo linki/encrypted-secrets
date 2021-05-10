@@ -1,4 +1,4 @@
-dist: bionic
+dist: focal
 
 os:
 - linux
@@ -6,11 +6,8 @@ os:
 language: go
 
 go:
-- "1.14"
+- "1.15"
 - tip
 
-env:
-- GO111MODULE=on
-
 script:
-- go test ./...
+- make test

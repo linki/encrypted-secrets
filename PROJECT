@@ -1,0 +1,25 @@
+domain: linki.dev
+layout:
+- go.kubebuilder.io/v3
+projectName: encrypted-secrets
+repo: github.com/linki/encrypted-secrets
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: linki.dev
+  group: k8s
+  kind: EncryptedSecret
+  path: github.com/linki/encrypted-secrets/api/v1beta1
+  version: v1beta1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: linki.dev
+  group: k8s
+  kind: ManagedSecret
+  path: github.com/linki/encrypted-secrets/api/v1beta1
+  version: v1beta1
+version: "3"
